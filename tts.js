@@ -61,7 +61,9 @@ async function dictateFile() {
   // combine into one large mp3 file
   audioconcat(list)
    .concat(filename + '.mp3')
-   .on('error', error => Log.error('Failed to concatenate files', error))
-   .on('end', () => Log.info('Generating audio prompts'));
+   .on('error', error => console.log('Failed to concatenate files', error))
+   .on('end', () => console.log('Generating audio prompts'));
 }
+
+// Run the script
 dictateFile();
