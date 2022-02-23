@@ -4,22 +4,15 @@
 const textToSpeech = require('@google-cloud/text-to-speech');
 const audioconcat = require('audioconcat');
 
-
 // Import other required libraries
 const fs = require('fs');
 const util = require('util');
 // Creates a client
 const client = new textToSpeech.TextToSpeechClient();
 
-async function dictateFile() {
-  // Take in input parameter: filename 
-  if ( process.argv < 3 ) {
-    console.log("please input the file name you would like to synthesize.")
-    console.log("usage: node tts.js ./input.txt")
-    return;
-  }
+
+async function dictateFile( filename ) {
   // Load in the text to synthesize
-  const filename = process.argv[2];
   console.log( "reading file: ", filename );
   const text = [ fs.readFileSync(filename, 'utf8') ];
   console.log( "length of text loaded:", text[0].length );
@@ -27,7 +20,6 @@ async function dictateFile() {
   // Google only accepts files of length less that 5000 characters to be synthesized, split up
   while ( text[ text.length - 1 ].length > 5000 ) {
     const curr = text[ text.length - 1 ];
-    console.log("text too long")
     let index = 4999;
     while ( curr[ index ] != '\n' && curr[ index ] != '.' ) {
       index -= 1
@@ -65,5 +57,20 @@ async function dictateFile() {
    .on('end', () => console.log('Generating audio prompts'));
 }
 
-// Run the script
-dictateFile();
+// run main if it is a script run from CLI
+function main() {
+  // Take in input parameter: filename 
+  if ( process.argv.length < 3 ) {
+    console.log("please input the file name you would like to synthesize.")
+    console.log("usage: node tts.js ./input.txt")
+    return;
+  }
+  const filename = process.argv[ 2 ]
+
+  // Run the script
+  dictateFile( filename );
+}
+
+if (require.main === module) {
+  main();
+}
