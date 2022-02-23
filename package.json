@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^3.4.0",
+    "audioconcat": "^0.1.4",
+    "fs": "^0.0.1-security"
+  }
+}
