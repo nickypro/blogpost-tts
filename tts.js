@@ -1,13 +1,12 @@
 // NOTE: remember to initiate GOOGLE_APPLICATION_CREDENTIALS
 
-// Imports the Google Cloud client library
 const textToSpeech = require('@google-cloud/text-to-speech');
 const audioconcat = require('audioconcat');
-
-// Import other required libraries
+const mp3Duration = require('mp3-duration');
 const fs = require('fs');
 const util = require('util');
-// Creates a client
+
+// Creates a google cloud platform tts client
 const client = new textToSpeech.TextToSpeechClient();
 
 
@@ -63,11 +62,13 @@ function dictateFile( filename ) {
     return speakerMap[speaker]
   } 
 
-  function newPart( speaker, text ) {
+  function newPart( speaker, text, index, isTitle=false ) {
     return ({
-      speaker: speaker,
-      text: text,
+      text,
+      speaker,
       voice: getVoice( speaker ),
+      output: filename + padLeadingZeros( index, 4 ) + ".mp3",
+      isTitle,
     })
   }
 
@@ -81,8 +82,10 @@ function dictateFile( filename ) {
     for (line of lines){
       line = line.trim()
 
+      // skip blank lines
       if (!line) continue;
 
+      // read out the speaker's name the first few times they talk
       if ( name.test( line ) ) {
         currentSpeaker = name.exec(line)[1]
         if ( !(currentSpeaker in speakerReferenceCount) ) {
@@ -90,17 +93,24 @@ function dictateFile( filename ) {
         }
         if ( speakerReferenceCount[currentSpeaker] < 5 ) {
           speakerReferenceCount[ currentSpeaker ] += 1
-          output.push(newPart( "Narrator", currentSpeaker ))
+          output.push(newPart( "Narrator", currentSpeaker, output.length ))
         }
         continue
       }
-      
+     
+      // recognise a title, read it out as the narator, take a note for bibliography
       if ( title.test( line ) ) {
         currentSpeaker = "Narrator"
+        output.push( newPart("Narrator", line, output.length, isTitle=true) )
+        continue
       }
- 
+
+      // merge blocks of text to somewhat reduce requests if the speaker is the same ( maybe unnecessary )
       const prev = output[ output.length-1 ]
-      if ( prev && prev["speaker"] == currentSpeaker && ( prev["text"].length + line.length ) < 4950 ) {
+      if ( prev && prev["speaker"] == currentSpeaker
+           && !prev["isTitle"] 
+           && ( prev["text"].length + line.length ) < 4950 ) {
+
         if ( prev["text"][ prev["text"].length - 1 ] != "." ) {
           prev["text"] += "."
         }
@@ -108,7 +118,8 @@ function dictateFile( filename ) {
         continue
       }
 
-      output.push( newPart( currentSpeaker, line ))
+      // add to the outputs
+      output.push( newPart( currentSpeaker, line, output.length ))
     }
 
     return output
@@ -144,7 +155,7 @@ function dictateFile( filename ) {
     outputFiles = []
     let i = 0;
     for ( item of inputs ) {
-      const outputFilename = filename + padLeadingZeros(i, 4) + ".mp3"
+      const outputFilename = item["output"]
       await request( item, outputFilename )
       outputFiles.push( outputFilename )
       i += 1
@@ -160,12 +171,44 @@ function dictateFile( filename ) {
      .on('end', () => console.log('Generating audio prompts'));
   }
 
+  async function genTimestamps( inputs ) {
+    const getDur = ( fileName ) => new Promise( res => mp3Duration( fileName, (err, dur) => { 
+      if ( err ) console.error( err );
+      res(dur) 
+    }))
+    currentTime = 0
+    for ( item of inputs ) {
+      t = await getDur( item["output"] )
+      x = Math.floor( currentTime )
+      item["timestamp"] = Math.floor( x / 60 ) + ":" + ( x % 60 ) 
+      item["duration"] = t
+      currentTime += t
+    }
+  }
+
+  function genBibliography( inputs ) {
+    titles = ""
+    for ( item of inputs ) {
+      if ( !item["isTitle"] ) continue;
+      titles += item["timestamp"] + " " + item["text"] + "\n"
+    }
+    return titles
+  }
+
   async function run() {
     const inputs = splitText( fulltext )
     console.log( inputs )
     outputs = await synthesizeItems( inputs ) 
-    console.log( outputs )
     combine( outputs )
+    
+    // bibliography
+    await genTimestamps( inputs )
+    console.log("Outputting all file data to JSON")  
+    fs.writeFileSync( filename+".json", JSON.stringify( inputs, null, 4 ) );
+    console.log("Outputting main bibliography")
+    const bib = genBibliography( inputs )
+    console.log( bib )
+    fs.writeFileSync( filename+".timestamps.json", bib );
   }
 
   run()
