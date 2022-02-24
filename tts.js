@@ -9,20 +9,27 @@ const util = require('util');
 // Creates a google cloud platform tts client
 const client = new textToSpeech.TextToSpeechClient();
 
+function padLeadingZeros(num, size) {
+  var s = num+"";
+  while (s.length < size) s = "0" + s;
+  return s;
+}
 
 function dictateFile( filename ) {
-  // Load in the text to synthesize
-  console.log( "reading file: ", filename );
-  const fulltext = fs.readFileSync(filename, 'utf8');
+  // Get file variables
   const path = filename.split("/")
   const file = path[ path.length-1 ]
-  workdir = "output/" + file + "/"
+  const workdir = "output/" + file + "/"
   if ( !fs.existsSync( workdir ) ) fs.mkdirSync( workdir, {recursive: true} );
   if ( !fs.existsSync( workdir+"part/" ) ) fs.mkdirSync( workdir+"part/" );
 
+  // Load in the text being recorded
+  console.log( "reading file: ", filename );
+  const fulltext = fs.readFileSync(filename, 'utf8');
   console.log( "length of text loaded:", fulltext.length );
 
-  speakers = new Set([
+  // create variables to store data about speakers and voices
+  const speakers = new Set([
     "en-AU-Wavenet-A",
     "en-AU-Wavenet-B",
     "en-AU-Wavenet-C",
@@ -45,17 +52,17 @@ function dictateFile( filename ) {
     "en-US-Wavenet-G",
     "en-US-Wavenet-H",
     //"en-US-Wavenet-I", Eliezer Yudkowski
-    "en-US-Wavenet-J",
+    //"en-US-Wavenet-J", Paul Christiano
   ])
 
-  speakerMap = {
+  const speakerMap = {
     "Narrator": "en-AU-Wavenet-D",
     "Ngo": "en-GB-Wavenet-B",
     "Yudkowsky": "en-US-Wavenet-I",
     "Soares": "en-US-Wavenet-A",
   }
 
-  speakerReferenceCount = {}
+  const speakerReferenceCount = {}
 
   function getVoice( speaker ) {
     if ( !(speaker in speakerMap) ){
@@ -68,6 +75,7 @@ function dictateFile( filename ) {
     return speakerMap[speaker]
   } 
 
+  // Create consistent list objects to store data
   function newPart( speaker, text, index, isTitle=false ) {
     return ({
       text,
@@ -78,12 +86,13 @@ function dictateFile( filename ) {
     })
   }
 
+  // Convert the text into a list of data objects to be synthesized
   function splitText( text ) {
     currentSpeaker = "Narrator"
     output = []
     lines = text.split("\n")
     name = /\[(\w+)\].*/
-    title = /\d+\..*/
+    title = /^\d+\..*/
 
     for (line of lines){
       line = line.trim()
@@ -130,12 +139,6 @@ function dictateFile( filename ) {
     return output
   }
 
-  function padLeadingZeros(num, size) {
-    var s = num+"";
-    while (s.length < size) s = "0" + s;
-    return s;
-  }
-
   async function request( item, outputFilename ) {
     const { voice, text } = item
     // Construct the request
@@ -171,7 +174,7 @@ function dictateFile( filename ) {
   // combine into one large mp3 file
   function combine( list ) {
     audioconcat(list)
-     .concat(workdir + 'final' + '.mp3')
+     .concat(workdir + file + 'final' + '.mp3')
      .on('error', error => console.log('Failed to concatenate files', error))
      .on('end', () => console.log('Generating audio prompts'));
   }
@@ -191,7 +194,7 @@ function dictateFile( filename ) {
     }
   }
 
-  function genBibliography( inputs ) {
+  function getTitleTimestamps( inputs ) {
     titles = ""
     for ( item of inputs ) {
       if ( !item["isTitle"] ) continue;
@@ -200,20 +203,24 @@ function dictateFile( filename ) {
     return titles
   }
 
+  // run the main processes
   async function run() {
+    // create the mp3
     const inputs = splitText( fulltext )
     console.log( inputs )
     outputs = await synthesizeItems( inputs ) 
     combine( outputs )
     
-    // bibliography
+    // timestamps and bibliography
+    console.log( "Getting timestamps of all sentences." )
     await genTimestamps( inputs )
-    console.log("Outputting all file data to JSON")  
+    console.log( "Outputting file data to json file." )
     fs.writeFileSync( workdir+file+".json", JSON.stringify( inputs, null, 4 ) );
-    console.log("Outputting main bibliography")
-    const bib = genBibliography( inputs )
-    console.log( bib )
-    fs.writeFileSync( workdir+file+"-timestamps.txt", bib );
+    const timestamps = getTitleTimestamps( inputs )
+    console.log( "Timestamps:" )
+    console.log( timestamps )
+    console.log( "Outputting timestams of main sections." )
+    fs.writeFileSync( workdir+file+"-timestamps.txt", timestamps );
   }
 
   run()
