@@ -16,7 +16,7 @@ function dictateFile( filename ) {
   const fulltext = fs.readFileSync(filename, 'utf8');
   const path = filename.split("/")
   const file = path[ path.length-1 ]
-  workdir = "output/" + file.split(".")[0] + "/"
+  workdir = "output/" + file + "/"
   if ( !fs.existsSync( workdir ) ) fs.mkdirSync( workdir, {recursive: true} );
   if ( !fs.existsSync( workdir+"part/" ) ) fs.mkdirSync( workdir+"part/" );
 
