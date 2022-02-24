@@ -106,7 +106,6 @@ function dictateFile( filename ) {
      
       // recognise a title, read it out as the narator, take a note for bibliography
       if ( title.test( line ) ) {
-        currentSpeaker = "Narrator"
         output.push( newPart("Narrator", line, output.length, isTitle=true) )
         continue
       }
@@ -186,7 +185,7 @@ function dictateFile( filename ) {
     for ( item of inputs ) {
       t = await getDur( item["output"] )
       x = Math.floor( currentTime )
-      item["timestamp"] = Math.floor( x / 60 ) + ":" + ( x % 60 ) 
+      item["timestamp"] = Math.floor( x / 60 ) + ":" + padLeadingZeros( ( x % 60 ), 2 )
       item["duration"] = t
       currentTime += t
     }
