@@ -14,6 +14,12 @@ function dictateFile( filename ) {
   // Load in the text to synthesize
   console.log( "reading file: ", filename );
   const fulltext = fs.readFileSync(filename, 'utf8');
+  const path = filename.split("/")
+  const file = path[ path.length-1 ]
+  workdir = "output/" + file.split(".")[0] + "/"
+  if ( !fs.existsSync( workdir ) ) fs.mkdirSync( workdir, {recursive: true} );
+  if ( !fs.existsSync( workdir+"part/" ) ) fs.mkdirSync( workdir+"part/" );
+
   console.log( "length of text loaded:", fulltext.length );
 
   speakers = new Set([
@@ -67,7 +73,7 @@ function dictateFile( filename ) {
       text,
       speaker,
       voice: getVoice( speaker ),
-      output: filename + padLeadingZeros( index, 4 ) + ".mp3",
+      output: workdir + "part/" + file + padLeadingZeros( index, 4 ) + ".mp3",
       isTitle,
     })
   }
@@ -166,7 +172,7 @@ function dictateFile( filename ) {
   // combine into one large mp3 file
   function combine( list ) {
     audioconcat(list)
-     .concat(filename + '.mp3')
+     .concat(workdir + 'final' + '.mp3')
      .on('error', error => console.log('Failed to concatenate files', error))
      .on('end', () => console.log('Generating audio prompts'));
   }
@@ -204,11 +210,11 @@ function dictateFile( filename ) {
     // bibliography
     await genTimestamps( inputs )
     console.log("Outputting all file data to JSON")  
-    fs.writeFileSync( filename+".json", JSON.stringify( inputs, null, 4 ) );
+    fs.writeFileSync( workdir+file+".json", JSON.stringify( inputs, null, 4 ) );
     console.log("Outputting main bibliography")
     const bib = genBibliography( inputs )
     console.log( bib )
-    fs.writeFileSync( filename+".timestamps.json", bib );
+    fs.writeFileSync( workdir+file+"-timestamps.txt", bib );
   }
 
   run()
