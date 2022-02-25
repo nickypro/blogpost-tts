@@ -30,10 +30,10 @@ function dictateFile( filename ) {
 
   // create variables to store data about speakers and voices
   const speakers = new Set([
-    "en-AU-Wavenet-A",
+    //"en-AU-Wavenet-A", Narrator
     "en-AU-Wavenet-B",
     "en-AU-Wavenet-C",
-    //"en-AU-Wavenet-D", Narrator
+    "en-AU-Wavenet-D",
     "en-IN-Wavenet-A",
     "en-IN-Wavenet-B",
     "en-IN-Wavenet-C",
@@ -56,7 +56,7 @@ function dictateFile( filename ) {
   ])
 
   const speakerMap = {
-    "Narrator": "en-AU-Wavenet-D",
+    "Narrator": "en-AU-Wavenet-A",
     "Ngo": "en-GB-Wavenet-B",
     "Yudkowsky": "en-US-Wavenet-I",
     "Soares": "en-US-Wavenet-A",
