@@ -188,7 +188,12 @@ function dictateFile( filename ) {
     for ( item of inputs ) {
       t = await getDur( item["output"] )
       x = Math.floor( currentTime )
-      item["timestamp"] = Math.floor( x / 60 ) + ":" + padLeadingZeros( ( x % 60 ), 2 )
+      if ( x < 3600 ){
+        item["timestamp"] = Math.floor( x / 60 ) + ":" + padLeadingZeros( ( x % 60 ), 2 )
+      } else {
+        item["timestamp"] = Math.floor( x / 3600 ) + ":" + padLeadingZeros( Math.floor( x / 60 ) % 60, 2 ) 
+                                                   + ":" + padLeadingZeros( ( x % 60 ), 2 )
+      }
       item["duration"] = t
       currentTime += t
     }
