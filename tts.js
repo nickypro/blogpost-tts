@@ -1,4 +1,6 @@
 // NOTE: remember to initiate GOOGLE_APPLICATION_CREDENTIALS
+const MAX_CHARACTER_LIMIT = 4950;
+
 const textToSpeech = require('@google-cloud/text-to-speech');
 const audioconcat = require('audioconcat');
 const mp3Duration = require('mp3-duration');
@@ -98,7 +100,7 @@ function dictateFile( filename ) {
       const prev = output[ output.length-1 ]
       if ( prev && prev["speaker"] == currentSpeaker
            && !prev["isTitle"] 
-           && ( prev["text"].length + line.length ) < 4950 ) {
+           && ( prev["text"].length + line.length ) < MAX_CHARACTER_LIMIT ) {
 
         if ( prev["text"][ prev["text"].length - 1 ] != "." ) {
           prev["text"] += "."
