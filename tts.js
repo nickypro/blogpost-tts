@@ -1,10 +1,11 @@
 // NOTE: remember to initiate GOOGLE_APPLICATION_CREDENTIALS
-
 const textToSpeech = require('@google-cloud/text-to-speech');
 const audioconcat = require('audioconcat');
 const mp3Duration = require('mp3-duration');
 const fs = require('fs');
 const util = require('util');
+
+const defaultSpeakers = require('speakers.js')
 
 // Creates a google cloud platform tts client
 const client = new textToSpeech.TextToSpeechClient();
@@ -28,41 +29,10 @@ function dictateFile( filename ) {
   const fulltext = fs.readFileSync(filename, 'utf8');
   console.log( "length of text loaded:", fulltext.length );
 
-  // create variables to store data about speakers and voices
-  const speakers = new Set([
-    //"en-AU-Wavenet-A", Narrator
-    "en-AU-Wavenet-B",
-    "en-AU-Wavenet-C",
-    "en-AU-Wavenet-D",
-    "en-IN-Wavenet-A",
-    "en-IN-Wavenet-B",
-    "en-IN-Wavenet-C",
-    "en-IN-Wavenet-D",
-    "en-GB-Wavenet-A",
-    //"en-GB-Wavenet-B", Richard Ngo
-    "en-GB-Wavenet-C",
-    "en-GB-Wavenet-D",
-    "en-GB-Wavenet-F",
-    //"en-US-Wavenet-A", Nate Soares
-    "en-US-Wavenet-B",
-    "en-US-Wavenet-C",
-    "en-US-Wavenet-D",
-    "en-US-Wavenet-E",
-    "en-US-Wavenet-F",
-    "en-US-Wavenet-G",
-    "en-US-Wavenet-H",
-    //"en-US-Wavenet-I", Eliezer Yudkowski
-    //"en-US-Wavenet-J", Paul Christiano
-  ])
-
-  const speakerMap = {
-    "Narrator": "en-AU-Wavenet-A",
-    "Ngo": "en-GB-Wavenet-B",
-    "Yudkowsky": "en-US-Wavenet-I",
-    "Soares": "en-US-Wavenet-A",
-  }
-
+  const speakers = defaultSpeakers.speakers
+  const speakerMap = defaultSpeakers.speakerMap
   const speakerReferenceCount = {}
+  const speakerMostRecentReference = {}
 
   function getVoice( speaker ) {
     if ( !(speaker in speakerMap) ){
@@ -95,6 +65,13 @@ function dictateFile( filename ) {
     title = /^\d+\..*/
 
     for (line of lines){
+      
+      // recognise a title, read it out as the narator, take a note for bibliography
+      if ( title.test( line ) ) {
+        output.push( newPart("Narrator", line, output.length, isTitle=true) )
+        continue
+      }
+
       line = line.trim()
 
       // skip blank lines
@@ -106,19 +83,17 @@ function dictateFile( filename ) {
         if ( !(currentSpeaker in speakerReferenceCount) ) {
           speakerReferenceCount[currentSpeaker] = 0;  
         }
-        if ( speakerReferenceCount[currentSpeaker] < 5 ) {
+        if ( !(currentSpeaker in speakerMostRecentReference) {
+          speakerMostRecentReference[currentSpeaker] = output.length + 1;
+        }
+        if (    speakerReferenceCount[currentSpeaker] < 5
+             || speakerMostRecentReference[currentSpeaker] + 20 < output.length ) {
           speakerReferenceCount[ currentSpeaker ] += 1
           output.push(newPart( "Narrator", currentSpeaker, output.length ))
         }
         continue
       }
      
-      // recognise a title, read it out as the narator, take a note for bibliography
-      if ( title.test( line ) ) {
-        output.push( newPart("Narrator", line, output.length, isTitle=true) )
-        continue
-      }
-
       // merge blocks of text to somewhat reduce requests if the speaker is the same ( maybe unnecessary )
       const prev = output[ output.length-1 ]
       if ( prev && prev["speaker"] == currentSpeaker
