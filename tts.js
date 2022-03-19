@@ -7,7 +7,7 @@ const mp3Duration = require('mp3-duration');
 const fs = require('fs');
 const util = require('util');
 
-const defaultSpeakers = require('speakers.js')
+const defaultSpeakers = require('./speakers.js')
 
 // Creates a google cloud platform tts client
 const client = new textToSpeech.TextToSpeechClient();
@@ -63,7 +63,7 @@ function dictateFile( filename ) {
     currentSpeaker = "Narrator"
     output = []
     lines = text.split("\n")
-    name = /\[(\w+)\].*/
+    name = /\[([a-zA-Z ]+)\].*/
     title = /^\d+\..*/
 
     for (line of lines){
@@ -85,7 +85,7 @@ function dictateFile( filename ) {
         if ( !(currentSpeaker in speakerReferenceCount) ) {
           speakerReferenceCount[currentSpeaker] = 0;  
         }
-        if ( !(currentSpeaker in speakerMostRecentReference) {
+        if ( !(currentSpeaker in speakerMostRecentReference) ) {
           speakerMostRecentReference[currentSpeaker] = output.length + 1;
         }
         if (    speakerReferenceCount[currentSpeaker] < 5
